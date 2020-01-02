@@ -11,6 +11,7 @@
 #include <fstream>
 #include <functional>
 #include <vector>
+#include <unordered_map>
 #include <tuple>
 #include <limits>
 
@@ -37,15 +38,46 @@ struct emu_cmd_state : cmd_state {
         bin_file("") {}
 };
 
+namespace parser {
+
+    struct token {
+        std::string name;
+        std::string alias;
+        std::string usage;
+        std::string description;
+        token_callback callback;
+    };
+
+    const std::unordered_map<std::string, token> dictionary {
+        
+    };
+}
+
+struct parser_state {};
+
+using token_callback = std::function<int(parser_state * parser_state, std::vector<std::string>::iterator & args_stream)>;
+
+
+
+// {<fullname>, <alias>, <has_args>, <callback>}
+const std::vector<cmd_handle> COMMANDS{
+    cmd_handle("--help", "-h", false, cmd_callback_fn(cmd_print_help_msg_and_exit)),
+    cmd_handle("--env", "-e", true, cmd_callback_fn(cmd_set_emu_env)),
+    cmd_handle("--file", "-f", true, cmd_callback_fn(cmd_set_bin_file)),
+    cmd_handle("--run-all-tests", "", false, cmd_callback_fn(cmd_set_test_run))
+};
+
+const std::tuple<std::string, std::string> cmd_details[] = {
+    std::tuple<std::string, std::string>("run-image [--map] <bin> [<addr>]", "Loads <bin> into memory starting at <addr>."),
+    std::tuple<std::string, std::string>("run-tests", "Runs the suite of tests.")
+};
+
 const std::string cmdline_help_msg = 
-"\ni8080-emu, an emulator for the INTEL 8080 microprocessor with some CP/M 2.2 BIOS support.\n"
-"Supports async interrupts, CPM 2.2 BDOS ops 2 and 9, and a simple command processor at CP/M WBOOT.\n\n"
-"Usage: i8080-emu [options]\n"
-"Options:\n"
-"   -h\t--help\t\t\tPrint this help message.\n"
-"   -e\t--env ENV\t\tSet the environment. \"default\" or \"cpm\".\n"
-"   -f\t--file FILE\t\tExecute the file as i8080 binary.\n"
-"   --run-all-tests\t\tRun all the test files under tests/.\n";
+"\ni8080emu <command> [<args>]"
+"\nEmulate an Intel 8080 microprocessor with 64KB of memory."
+"\n\ncommands:"
+"   run-image [--map] <bin> [<addr>] \t\t \n"
+"   run-tests\t\t\n";
 
 // Prints the help message and returns EXIT failure
 int cmd_print_help_msg_and_exit(cmd_state * cmd_state, std::vector<std::string>::iterator &) {
@@ -111,17 +143,6 @@ int cmd_set_test_run(cmd_state * cmd_state, std::vector<std::string>::iterator &
     emu_cmd_state->is_testing = true;
     return 1;
 }
-
-using cmd_callback_fn = std::function<int(cmd_state * cmd_state, std::vector<std::string>::iterator & cmdline_args)>;
-using cmd_handle = std::tuple<std::string, std::string, bool, cmd_callback_fn>;
-
-// {<fullname>, <alias>, <has_args>, <callback>}
-const std::vector<cmd_handle> CMDLINE_COMMANDS {
-    cmd_handle("--help", "-h", false, cmd_callback_fn(cmd_print_help_msg_and_exit)),
-    cmd_handle("--env", "-e", true, cmd_callback_fn(cmd_set_emu_env)),
-    cmd_handle("--file", "-f", true, cmd_callback_fn(cmd_set_bin_file)),
-    cmd_handle("--run-all-tests", "", false, cmd_callback_fn(cmd_set_test_run))
-};
 
 int process_cmdline(int argc, char ** argv, cmd_state & cmd_state) {
 
